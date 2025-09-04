@@ -1,0 +1,25 @@
+# .github/workflows/release-latest.yml
+name: Release latest notebooks
+
+on:
+  workflow_dispatch: {}      # spustíš ručně
+  push:
+    branches: [ main ]       # nebo automaticky při push do main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Create (or reuse) release and upload all notebooks
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: latest-notebooks
+          release_name: latest notebooks
+          file: '**/*.ipynb'
+          file_glob: true
+          overwrite: true
