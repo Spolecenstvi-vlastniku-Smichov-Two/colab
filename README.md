@@ -1,2 +1,2 @@
-# colab
-Examples for Google Colab
+# img
+Library of Images, mostly generated in Jupyter Notebooks
