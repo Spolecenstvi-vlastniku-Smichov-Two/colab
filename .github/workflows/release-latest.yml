@@ -2,24 +2,47 @@
 name: Release latest notebooks
 
 on:
-  workflow_dispatch: {}      # spustíš ručně
+  workflow_dispatch: {}
   push:
-    branches: [ main ]       # nebo automaticky při push do main
+    branches: [ main ]
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
 
-      - name: Create (or reuse) release and upload all notebooks
+      # Volitelné: odstranit starý problémový asset (když existuje)
+      - name: Remove legacy asset with trailing space (if present)
+        run: |
+          set -e
+          gh release view latest-notebooks --json assets \
+            --jq '.assets[].name' | grep -Fx "SM2_supply_air_heating_ambient_context_public_dataset .ipynb" \
+            && gh release delete-asset latest-notebooks "SM2_supply_air_heating_ambient_context_public_dataset .ipynb" -y || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Sanitace názvů souborů do upload/
+      - name: Prepare sanitized upload directory
+        run: |
+          set -e
+          mkdir -p upload
+          # zkopíruj všechny .ipynb a vyčisti názvy: odstranění koncových mezer, nahrazení whitespace podtržítkem
+          while IFS= read -r -d '' f; do
+            base="$(basename "$f")"
+            clean="$(printf "%s" "$base" \
+              | sed 's/[[:space:]]\+\.ipynb$/.ipynb/' \
+              | sed 's/[[:space:]]\+/_/g')"
+            cp "$f" "upload/$clean"
+          done < <(find . -type f -name '*.ipynb' -print0)
+          echo "Sanitized files:"
+          ls -1 upload
+
+      - name: Upload notebooks as release assets (overwrite)
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: latest-notebooks
-          release_name: latest notebooks
-          file: '**/*.ipynb'
+          file: upload/*.ipynb
           file_glob: true
           overwrite: true
